@@ -251,3 +251,17 @@ class PPO(object):
             self.v,             # v é a saida de valores da CRITICA
             {self.tfs: s}       # tfs é o placeholder que recebe o estado s
         )[0, 0] #
+    def set_GAMMA(self, sGAMMA):
+        GAMMA=sGAMMA
+    def set_A_LR(self, sA_LR):
+        A_LR=sA_LR
+    def set_C_LR(self, sC_LR):
+        C_LR=sC_LR
+    def set_A_UPDATE_STEPS(self, sA_UPDATE_STEPS):
+        A_UPDATE_STEPS=sA_UPDATE_STEPS
+    def set_C_UPDATE_STEPS(self, sC_UPDATE_STEPS):
+        C_UPDATE_STEPS=sC_UPDATE_STEPS
+    def set_S_DIM(self, sS_DIM):
+        S_DIM=sS_DIM
+    def set_A_DIM(self, sA_DIM):
+        A_DIM=sA_DIM
