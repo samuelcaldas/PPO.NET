@@ -19,27 +19,27 @@ namespace ppo.net
             {
                 try
                 {
-                    //  Importaçoes //
+                    //  Importações //
                     dynamic site = Py.Import("site");
                     dynamic sys = Py.Import("sys");
-                    site.addsitedir(@"D:\Usuario\Documents\NinjaTrader 8\bin\TF\netppo");
+                    site.addsitedir(@"C:\Users\samue\source\repos\PPO.NET");
                     dynamic gym = Py.Import("gym");
                     dynamic np = Py.Import("numpy");    // Numpy para trabalhar com arrays
                     dynamic PPO = Py.Import("PPO");
                     dynamic plt = Py.Import("matplotlib.pyplot");
                     //  Configurações   //
-                    int EP_MAX = 700;   // Qantidade total de episódios
+                    int EP_MAX = 700;   // Quantidade total de episódios
                     int EP_LEN = 200;   // Quantas sequencias vão acontecer dentro de cada episódio
                     double GAMMA = 0.9; // Avanço (?)
                     int BATCH = 64;     // Tamanho do pacote à entrar para treinamento em cada etapa (?)
 
-                    // Implementaçao do ambiente   //
+                    // Implementação do ambiente   //
                     dynamic env = gym.make("Pendulum-v0").unwrapped;    // Instancia o ambiente pendulo
                     dynamic ppo = PPO.PPO();                            // Instancia a classe PPO
-                    List<double> all_ep_r = new List<double>();         // Cria um array para a recompensa de todos os episodios
+                    List<double> all_ep_r = new List<double>();         // Cria um array para a recompensa de todos os episódios
 
                     //  Loop de episódios //
-                    for (int epmax = 0; epmax < EP_MAX; epmax++)    // EP_MAX: quantidade de episodios 
+                    for (int epmax = 0; epmax < EP_MAX; epmax++)    // EP_MAX: quantidade de episódios 
                     {
                         dynamic s = env.reset();     // Redefine o ambiente e armazena o estado atual em s
                         // Cria quatro arrais para o episódio:
@@ -52,15 +52,15 @@ namespace ppo.net
                         for (int eplen = 0; eplen < EP_LEN; eplen++)    // Duração de cada episodio
                         {
                             env.render();   // Renderiza o ambiente
-                            var a = ppo.choose_action(s);   // Envia um estado s e recebe uma açao a 
-                            dynamic step = env.step(a);     // Envia uma açao a ao ambiente e recebe o estado s_, e a recompensa r
+                            var a = ppo.choose_action(s);   // Envia um estado s e recebe uma ação a 
+                            dynamic step = env.step(a);     // Envia uma ação a ao ambiente e recebe o estado s_, e a recompensa r
                             PyObject s_ = step.GetItem(0);  // Adiciona ao buffer de estado o estado atual s
                             dynamic r = step.GetItem(1);
                             buffer_s.Add(s);    // Adiciona ao buffer de estado o estado atual s
-                            buffer_a.Add(a);    // Adiciona ao buffer de ação a açao atual a
+                            buffer_a.Add(a);    // Adiciona ao buffer de ação a ação atual a
                             double _r = r;
                             buffer_r.Add((_r + 8) / 8); // Adiciona ao buffer de recompensa a recompensa atual (?) normalizada (r+8)/8
-                            s = s_;     // Atualiza a variavel de estado com o estado recebido pelo ambiente
+                            s = s_;     // Atualiza a variável de estado com o estado recebido pelo ambiente
                             ep_r += _r; // soma a recompensa da ação a recompensa do episodio
 
                             //  Atualiza PPO //
@@ -83,15 +83,15 @@ namespace ppo.net
                                 var ba = np.vstack(buffer_a);
                                 var _br = np.array(discounted_r);
                                 var br = np.expand_dims(_br, axis: 1);
-                                // Esvazia os buffers de estado, açao e recompensa
+                                // Esvazia os buffers de estado, ação e recompensa
                                 buffer_s.Clear();
                                 buffer_a.Clear();
                                 buffer_r.Clear();
                                 // Treine o cliente e o ator (status, ações, desconto de r)
                                 ppo.update( // Atualiza as redes com:
-                                    bs,     //   Os estados aculmulados
-                                    ba,     //   As ações aculmuladas
-                                    br      //   As recompensas aculmuladas
+                                    bs,     //   Os estados acumulados
+                                    ba,     //   As ações acumuladas
+                                    br      //   As recompensas acumuladas
                                 );
                             }
                         }
@@ -110,7 +110,7 @@ namespace ppo.net
                             "   |   Ep_r:   " + ep_r // Recompensa do episodio
                         );
                     }
-                    plt.plot( // Plota o grafico de todas as recompensas
+                    plt.plot( // Plota o gráfico de todas as recompensas
                         np.arange(
                             all_ep_r.Count
                         ),
