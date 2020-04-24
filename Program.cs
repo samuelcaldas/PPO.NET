@@ -125,7 +125,7 @@ namespace ppo.net
                 {
                     // Communicate errors with exceptions from within python script -
                     // this works very nice with pythonnet.
-                    Console.WriteLine("Error occured: ", error.Message);
+                    Console.WriteLine("Error occurred: ", error.Message);
                 }
             }
         }
