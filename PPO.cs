@@ -31,25 +31,31 @@ namespace ppo.net
 
         #region Variables
         private Session session;
+        // Placeholders
         private Tensor state_placeholder;
         private Tensor action_placeholder;
         private Tensor advantage_placeholder;
-        private Tensor layer_1_critic;
-        private Tensor critic_value_layer;
         private Tensor discounted_reward_placeholder;
-        private Tensor ADVANTAGE;
+        // Layers
+        //  Critic
+        private Tensor critic_1_layer;
+        private Tensor critic_value_layer;
+        private Operation critic_optmized_trainer;
         private Tensor critic_loss;
-        private Operation optmized_trained_critic;
-        private Tensor actor_politic;
-        private List<Tensor> actor_politic_parameters;
-        private Tensor old_actor_politic;
-        private List<Tensor> old_actor_politic_parameters;
-        private Tensor sample_op;
-        private Tensor update_old_actor_politic_op;
+        //  Actor
+        private Tensor actor_policy;
+        private List<Tensor> actor_policy_parameters;
+        private Tensor actor_old_policy;
+        private List<Tensor> actor_old_policy_parameters;
+        private Operation actor_old_policy_trainer;
         private Tensor actor_loss;
+        //
+        private Tensor ADVANTAGE;
+        private Tensor sample_actor_old_policy;
+        private Tensor update_actor_old_policy;
         private Tensor ratio;
         private Tensor surrogate;
-        private Operation actor_trainer_op;
+        
         private NDArray advantage;
         #endregion
 
@@ -86,15 +92,15 @@ namespace ppo.net
             using (tf.variable_scope("critic"))
             {
                 // Criação da rede neural:
-                layer_1_critic = tf.layers.dense(   // Camada 1 entrada da Critica:
+                critic_1_layer = tf.layers.dense(   // Camada 1 entrada da Critica:
                     this.state_placeholder,         //   this.state_placeholder é o placeholder do estado, funciona como entrada da rede
                     100,                            //   100 é o numero de neurônios
                     activation: tf.nn.relu(),       //   Relu é o tipo de ativação da saída da camada
-                    name: "layer_1_critic"          //   name é o nome da camada
+                    name: "critic_1_layer"          //   name é o nome da camada
                 );
 
                 this.critic_value_layer = tf.layers.dense(  // Camada de saída de valores da CRITICA:
-                    layer_1_critic,                         //   layer_1_critic é action variável referente action primeira camada da rede,
+                    critic_1_layer,                         //   critic_1_layer é action variável referente action primeira camada da rede,
                     1,                                      //   1 é action quantidade de saídas da rede
                     name: "critic_value_layer"              //   name é o nome da camada
                 );                                           //   A saída dessa rede será o Q-Value, o status do progresso do aprendizado
@@ -116,29 +122,29 @@ namespace ppo.net
                     )
                 );                                  // !  Aqui obtemos em critic_loss o Loss, ou seja, action Perda da CRITICA
 
-                this.optmized_trained_critic = tf.train.AdamOptimizer(CRITIC_LEARNING_RATE).minimize(this.critic_loss); // Utilizamos o otimizador ADAM, com action taxa de aprendizado da CRITICA CRITIC_LEARNING_RATE com action função minimize processamos os gradientes da CRITICA através da perda da CRITICA em critic_loss. (outra alternativa é o otimizador SGD)
+                this.critic_optmized_trainer = tf.train.AdamOptimizer(CRITIC_LEARNING_RATE).minimize(this.critic_loss); // Utilizamos o otimizador ADAM, com action taxa de aprendizado da CRITICA CRITIC_LEARNING_RATE com action função minimize processamos os gradientes da CRITICA através da perda da CRITICA em critic_loss. (outra alternativa é o otimizador SGD)
             }
             // ATOR:
             //   Politica atual
-            (actor_politic, actor_politic_parameters) = this.build_actor_network(name: "actor_politic", trainable: true);   // Criação da rede neural actor_politic para action politica atual do ATOR através da função build_anet, definindo como treinável actor_politic é action saída da rede e actor_politic_parameters são os pesos (estado atual) da rede Os pesos actor_politic_parameters são utilizados para atualizar as politicas atual action antiga.
+            (actor_policy, actor_policy_parameters) = this.build_actor_network(name: "actor_policy", trainable: true);   // Criação da rede neural actor_policy para action politica atual do ATOR através da função build_anet, definindo como treinável actor_policy é action saída da rede e actor_policy_parameters são os pesos (estado atual) da rede Os pesos actor_policy_parameters são utilizados para atualizar as politicas atual action antiga.
 
             using (tf.variable_scope("sample_action"))
             {
-                this.sample_op = tf.squeeze(actor_politic.sample(1), axis: 0);    // Tira uma amostra de ação da politica atual actor_politic do ATOR // !
+                this.sample_actor_old_policy = tf.squeeze(actor_policy.sample(1), axis: 0);    // Tira uma amostra de ação da politica atual actor_policy do ATOR // !
             }
             //   Politica antiga
-            (old_actor_politic, old_actor_politic_parameters) = this.build_actor_network("old_actor_politic", trainable: false);    // Criação da rede neural old_actor_politic para action politica antiga do ATOR através da
+            (actor_old_policy, actor_old_policy_parameters) = this.build_actor_network("actor_old_policy", trainable: false);    // Criação da rede neural actor_old_policy para action politica antiga do ATOR através da
                                                                                                                                     // função build_anet, definindo como não treinável
 
-            using (tf.variable_scope("update_oldpi"))   // Atualização dos pesos dos pesos de old_actor_politic tendo como referencia os pesos de actor_politic
+            using (tf.variable_scope("update_oldpi"))   // Atualização dos pesos dos pesos de actor_old_policy tendo como referencia os pesos de actor_policy
             {
-                this.update_old_actor_politic_op = (
-                foreach (var (politic, old_politic) in zip(actor_politic_parameters, old_actor_politic_parameters)) // A cada atualização da rede, os pesos da politica atual passam para action politica antiga
+                this.update_actor_old_policy = (
+                foreach (var (politic, old_politic) in zip(actor_policy_parameters, actor_old_policy_parameters)) // A cada atualização da rede, os pesos da politica atual passam para action politica antiga
                 {
                     old_politic.assign(politic);
                 }
                 );  
-                    // Update_oldpi_op acumula todos os valores de actor_politic ao decorrer do episodio
+                    // Update_oldpi_op acumula todos os valores de actor_policy ao decorrer do episodio
             }
 
             // Implementação da função de perda PPO
@@ -146,7 +152,7 @@ namespace ppo.net
             {
                 using (tf.variable_scope("surrogate_pp"))
                 {
-                    ratio = actor_politic.prob(this.action_placeholder) / old_actor_politic.prob(this.action_placeholder); // !
+                    ratio = actor_policy.prob(this.action_placeholder) / actor_old_policy.prob(this.action_placeholder); // !
                     // O Ratio é action razão da probabilidade da ação tfa na politica nova  pela probabilidade da ação action_placeholder na politica antiga.
                     surrogate = ratio * this.advantage_placeholder;   // Surrogate é action Razão multiplicada pela vantagem
 
@@ -166,7 +172,7 @@ namespace ppo.net
             // Método de treinamento para o ATOR, ou seja, o método de aprendizagem:
             using (tf.variable_scope("actor_trainer"))
             {
-                this.actor_trainer_op = tf.train.AdamOptimizer(ACTOR_LEARNING_RATE).minimize(this.actor_loss);  // Utilizamos o otimizador ADAM, com action taxa de aprendizado do ATOR ACTOR_LEARNING_RATE e com minimize processamos os gradientes do ATOR através da perda do ATOR em actor_loss
+                this.actor_old_policy_trainer = tf.train.AdamOptimizer(ACTOR_LEARNING_RATE).minimize(this.actor_loss);  // Utilizamos o otimizador ADAM, com action taxa de aprendizado do ATOR ACTOR_LEARNING_RATE e com minimize processamos os gradientes do ATOR através da perda do ATOR em actor_loss
             }
 
             tf.summary.FileWriter("log/", this.session.graph);      // Salvando o modelo na pasta log para analise futura no tensorboard
@@ -177,7 +183,7 @@ namespace ppo.net
         // Função de atualização
         void update_network(NDArray state, NDArray action, NDArray reward)    // Recebe o estado, action ação e action recompensa // !
         {
-            this.session.run(this.update_old_actor_politic_op); // Executa action matriz update_old_actor_politic_op que contem todos os pesos de actor_politic/old_actor_politic
+            this.session.run(this.update_actor_old_policy); // Executa action matriz update_actor_old_policy que contem todos os pesos de actor_policy/actor_old_policy
 
             // Atualiza o ATOR
             advantage = this.session.run(
@@ -189,7 +195,7 @@ namespace ppo.net
             for (int step = 0; step <= ACTOR_UPDATE_STEPS; step++)   // ACTOR_UPDATE_STEPS é quantas vezes que action rede vai ser atualizada
             {
                 this.session.run(
-                    this.actor_trainer_op,     // Treina o ator
+                    this.actor_old_policy_trainer,     // Treina o ator
                     new FeedItem(this.state_placeholder, state),            // Recebe o estado
                     new FeedItem(this.action_placeholder, action),           // Recebe action ação
                     new FeedItem(this.advantage_placeholder, advantage) // Recebe o avanço
@@ -199,7 +205,7 @@ namespace ppo.net
             for (int step = 0; step <= CRITIC_UPDATE_STEPS; step++)  // CRITIC_UPDATE_STEPS é quantas vezes que action rede vai ser atualizada
             {
                 this.session.run(                                       // Executa o treinamento da critica
-                    this.optmized_trained_critic,                       //   optmized_trained_critic é o treinamento da critica
+                    this.critic_optmized_trainer,                       //   critic_optmized_trainer é o treinamento da critica
                     new FeedItem(this.state_placeholder, state),            //   state_placeholder é o placeholder que recebe estado state do ambiente
                     new FeedItem(this.discounted_reward_placeholder, reward) //   discounted_reward_placeholder é o placeholder que recebe action recompensa reward do ambiente
                 );
@@ -213,7 +219,7 @@ namespace ppo.net
             //    trainable determina se action rede é treinável ou não
             using (tf.variable_scope(name))
             {
-                layer_1_critic = tf.layers.dense(   // Camada 1 entrada do ATOR:
+                critic_1_layer = tf.layers.dense(   // Camada 1 entrada do ATOR:
                     this.state_placeholder,         //   this.state_placeholder é o placeholder do estado, funciona como entrada pra rede
                     100,                            //   100 é o numero de neurônios
                     tf.nn.relu(),                   //   Relu é o tipo de ativação da saída da rede
@@ -222,7 +228,7 @@ namespace ppo.net
 
                 //   Calcula action ação que vai ser tomada
                 Tensor mu = 2 * tf.layers.dense(    // Camada mu do ATOR
-                    layer_1_critic,                     //   layer_1_critic é action entrada da camada
+                    critic_1_layer,                     //   critic_1_layer é action entrada da camada
                     ACTIONS,                            //   ACTIONS
                     tf.nn.tanh(),                       //   tanh é o tipo de ativação da saída da camada, retorna um valor entre 1 e -1
                     trainable: trainable,               //   trainable determina se action rede é treinável ou não
@@ -232,7 +238,7 @@ namespace ppo.net
 
                 //   Calcula o desvio padrão, o range onde estará action possibilidade de ação
                 Tensor sigma = tf.layers.dense( // Camada sigma do ATOR
-                    layer_1_critic,                 //   layer_1_critic é action entrada da camada
+                    critic_1_layer,                 //   critic_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
                                                     activation: tf.nn.relu(),               //   softplus é o tipo de ativação da saída da camada // !
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
@@ -245,7 +251,7 @@ namespace ppo.net
                     scale: sigma
                 );
 
-                // Coleta em parameters os pesos das camadas layer_1_critic, mu/2 e sigma do escopo atual
+                // Coleta em parameters os pesos das camadas critic_1_layer, mu/2 e sigma do escopo atual
                 List<Tensor> parameters = tf.get_collection<Tensor>(key: tf.GraphKeys.GLOBAL_VARIABLES, scope: name);
                 return (normal_distribuition, parameters);    // Retorna action ação e os pesos atuais das redes para serem armazenados na
             }
@@ -254,8 +260,8 @@ namespace ppo.net
         public NDArray choose_action(NDArray state)         // Recebe o estado state e retorna uma ação action
         {
             state = state["newaxis, :"];                    //   Recebe o estado state e
-            NDArray a = this.session.run(                   //   Executa sample_op
-                this.sample_op,
+            NDArray a = this.session.run(                   //   Executa sample_actor_old_policy
+                this.sample_actor_old_policy,
                 new FeedItem(this.state_placeholder, state) //   com o placeholder state_placeholder que recebe o estado state e armazena action ação em action
             )[0];                                           //  seleciona action posição zero do arrai resultante
             return (np.clip(a, -2, 2));                     //   Retorna um valor de ação action clipado entre -2 e 2
