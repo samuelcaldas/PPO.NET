@@ -15,7 +15,7 @@ namespace ppo.net
 
         private static void Test()
         {
-            using (Py.GIL()) //Initialize the Python engine and acquire the interpreter lock
+            using (Py.GIL()) // Inicialize o mecanismo Python e adquira o bloqueio do interpretador
             {
                 try
                 {
@@ -117,15 +117,15 @@ namespace ppo.net
                         ),
                         all_epochs_rewards
                     );
-                    plt.xlabel("Episode");
-                    plt.ylabel("Moving averaged episode reward");
+                    plt.xlabel("Época");
+                    plt.ylabel("Média móvel da recompensa de cada época");
                     plt.show();
                 }
                 //catch (PythonException error)
                 catch (Exception error)
                 {
-                    // Communicate errors with exceptions from within python script -
-                    // this works very nice with pythonnet.
+                    // Comunique erros com exceções no script python -
+                    // isso funciona muito bem com pythonnet.
                     Console.WriteLine("Error occurred: ", error.Message);
                 }
             }
