@@ -20,7 +20,6 @@ namespace ppo.net
 
 
         #region Configurações
-        float GAMMA = (float)0.9;                   // Avanço (?)
         float ACTOR_LEARNING_RATE = (float)0.0001;  // Taxa de aprendizado do ATOR
         float CRITIC_LEARNING_RATE = (float)0.0002; // Taxa de aprendizado da CRITICA
         int ACTOR_UPDATE_STEPS = 20;                // Quantidade de vezes que o treinamento do ATOR vai tomar action cadeia de dados de batch
@@ -43,9 +42,9 @@ namespace ppo.net
         private Operation critic_optmized_trainer;
         private Tensor critic_loss;
         //  Actor
-        private Tensor actor_policy;
+        private Normal actor_policy;
         private List<Tensor> actor_policy_parameters;
-        private Tensor actor_old_policy;
+        private Normal actor_old_policy;
         private List<Tensor> actor_old_policy_parameters;
         private Operation actor_old_policy_trainer;
         private Tensor actor_loss;
@@ -93,14 +92,14 @@ namespace ppo.net
             {
                 // Criação da rede neural:
                 critic_1_layer = tf.layers.dense(   // Camada 1 entrada da Critica:
-                    this.state_placeholder,         //   this.state_placeholder é o placeholder do estado, funciona como entrada da rede
+                    inputs: this.state_placeholder, //   this.state_placeholder é o placeholder do estado, funciona como entrada da rede
                     100,                            //   100 é o numero de neurônios
                     activation: tf.nn.relu(),       //   Relu é o tipo de ativação da saída da camada
                     name: "critic_1_layer"          //   name é o nome da camada
                 );
 
                 this.critic_value_layer = tf.layers.dense(  // Camada de saída de valores da CRITICA:
-                    critic_1_layer,                         //   critic_1_layer é action variável referente action primeira camada da rede,
+                    inputs: critic_1_layer,                 //   critic_1_layer é action variável referente action primeira camada da rede,
                     1,                                      //   1 é action quantidade de saídas da rede
                     name: "critic_value_layer"              //   name é o nome da camada
                 );                                          //   A saída dessa rede será o Q-Value, o status do progresso do aprendizado
@@ -152,7 +151,7 @@ namespace ppo.net
                 using (tf.variable_scope("surrogate_pp"))
                 {
                     ratio = actor_policy.prob(this.action_placeholder) / actor_old_policy.prob(this.action_placeholder); // !
-                    // O Ratio é action razão da probabilidade da ação tfa na politica nova  pela probabilidade da ação action_placeholder na politica antiga.
+                    // O Ratio é action razão da probabilidade da ação actor_policy na politica nova  pela probabilidade da ação action_placeholder na politica antiga.
                     surrogate = ratio * this.advantage_placeholder; // Surrogate é action Razão multiplicada pela vantagem
 
                     this.actor_loss = -tf.reduce_mean(          // tf.educe_mean calcula action negativa da média do
@@ -218,8 +217,8 @@ namespace ppo.net
             //    trainable determina se action rede é treinável ou não
             using (tf.variable_scope(name))
             {
-                critic_1_layer = tf.layers.dense(   // Camada 1 entrada do ATOR:
-                    this.state_placeholder,         //   this.state_placeholder é o placeholder do estado, funciona como entrada pra rede
+                Tensor actor_1_layer = tf.layers.dense(   // Camada 1 entrada do ATOR:
+                    inputs: this.state_placeholder, //   this.state_placeholder é o placeholder do estado, funciona como entrada pra rede
                     100,                            //   100 é o numero de neurônios
                     tf.nn.relu(),                   //   Relu é o tipo de ativação da saída da rede
                     trainable: trainable            //   trainable determina se action rede é treinável ou não
@@ -227,7 +226,7 @@ namespace ppo.net
 
                 //   Calcula action ação que vai ser tomada
                 Tensor mu = 2 * tf.layers.dense(    // Camada mu do ATOR
-                    critic_1_layer,                 //   critic_1_layer é action entrada da camada
+                    inputs: actor_1_layer,         //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
                     tf.nn.tanh(),                   //   tanh é o tipo de ativação da saída da camada, retorna um valor entre 1 e -1
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
@@ -237,9 +236,9 @@ namespace ppo.net
 
                 //   Calcula o desvio padrão, o range onde estará action possibilidade de ação
                 Tensor sigma = tf.layers.dense(     // Camada sigma do ATOR
-                    critic_1_layer,                 //   critic_1_layer é action entrada da camada
+                    inputs: actor_1_layer,         //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
-                    activation: tf.nn.softplus(),   //   softplus é o tipo de ativação da saída da camada // !
+                    activation: tf.nn.relu(),   //   softplus é o tipo de ativação da saída da camada // !
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
                     name: "sigma_" + name           //   name é o nome da camada
                 );
@@ -249,8 +248,8 @@ namespace ppo.net
                     loc: mu,                                            // Loc é action média
                     scale: sigma
                 );
-
-                // Coleta em parameters os pesos das camadas critic_1_layer, mu/2 e sigma do escopo atual
+                
+                // Coleta em parameters os pesos das camadas actor_1_layer, mu/2 e sigma do escopo atual
                 List<Tensor> parameters = tf.get_collection<Tensor>(key: tf.GraphKeys.GLOBAL_VARIABLES, scope: name);
                 return (normal_distribuition, parameters);    // Retorna action ação e os pesos atuais das redes para serem armazenados na
             }
@@ -277,5 +276,6 @@ namespace ppo.net
                 new FeedItem(this.state_placeholder, state) // state_placeholder é o placeholder que recebe o estado state
             )[0, 0];                                        //  seleciona action posição zero, zero do arrai resultante
         }
+
     }
 }

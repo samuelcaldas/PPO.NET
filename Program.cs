@@ -31,7 +31,7 @@ namespace ppo.net
                     //  Configurações   //
                     int TRAINING_EPOCHS = 700;  // Quantidade total de episódios
                     int TRAINING_STEPS = 200;   // Quantas sequencias vão acontecer dentro de cada episódio
-                    double GAMMA = 0.9;         // Avanço (?)
+                    float GAMMA = (float)0.9;                   // Avanço (?)
                     int NUMBER_OF_SAMPLES = 64; // Tamanho do pacote à entrar para treinamento em cada etapa (?)
 
                     // Implementação do ambiente   //
@@ -46,7 +46,7 @@ namespace ppo.net
                         // Cria quatro arrais para o episódio:
                         List<PyObject> buffered_states = new List<PyObject>();  // buffered_states: buffer do estado
                         List<PyObject> buffered_actions = new List<PyObject>(); // buffered_actions: buffer da ação
-                        List<double> buffered_reward = new List<double>();      // buffered_reward: buffer da recompensa         
+                        List<double> buffered_rewards = new List<double>();      // buffered_rewards: buffer da recompensa         
                         List<double> discounted_reward = new List<double>();    // Cria um array pra armazenar as recompensas calculadas
                         double epoch_reward = 0;    // Recompensa do episódio
                         //  Loop de episódio //
@@ -59,9 +59,9 @@ namespace ppo.net
                             double reward = (double)step.GetItem(1);
                             buffered_states.Add(state);             // Adiciona ao buffer de estado o estado atual state
                             buffered_actions.Add(action);           // Adiciona ao buffer de ação action ação atual action
-                            buffered_reward.Add((reward + 8) / 8); // Adiciona ao buffer de recompensa action recompensa atual (?) normalizada (reward+8)/8
+                            buffered_rewards.Add((reward + 8) / 8);  // Adiciona ao buffer de recompensa action recompensa atual (?) normalizada (reward+8)/8
                             state = step_state;                     // Atualiza action variável de estado com o estado recebido pelo ambiente
-                            epoch_reward += reward;                // soma action recompensa da ação action recompensa do episodio
+                            epoch_reward += reward;                 // soma action recompensa da ação action recompensa do episodio
 
                             //  Atualiza PPO //
                             if ((STEP + 1) % NUMBER_OF_SAMPLES == 0 || STEP == TRAINING_STEPS - 1)
@@ -69,8 +69,8 @@ namespace ppo.net
                                 double value_state_ = ppo.get_v(step_state);    // Passa o estado atual step_state e recebe o valor atual da taxa de aprendizagem da CRITICA
                                                                                 // V = learned state-value function
                                 discounted_reward.Clear();                      // Limpa o array de recompensas calculadas
-                                buffered_reward.Reverse();                      // Coloca o array de buffer de recompensa ao contrario
-                                foreach (double b_r in buffered_reward)
+                                buffered_rewards.Reverse();                      // Coloca o array de buffer de recompensa ao contrario
+                                foreach (double b_r in buffered_rewards)
                                 {
                                     value_state_ = b_r + GAMMA * value_state_;  // Calcula action recompensa multiplicando action recompensa recebida reward pela GAMMA 
                                                                                 // e pelo valor da taxa de aprendizado do estado value_state_
@@ -85,7 +85,7 @@ namespace ppo.net
                                 // Esvazia os buffers de estado, ação e recompensa
                                 buffered_states.Clear();
                                 buffered_actions.Clear();
-                                buffered_reward.Clear();
+                                buffered_rewards.Clear();
                                 // Treine o cliente e o ator (status, ações, desconto de reward)
                                 ppo.update( // Atualiza as redes com:
                                     _buffered_states,     //   Os estados acumulados
