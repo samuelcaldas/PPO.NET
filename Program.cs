@@ -124,6 +124,7 @@ namespace ppo.net
                 catch (Exception error)
                 {
                     // Comunique erros com exceções no script python -  isso funciona muito bem com pythonnet.
+                    Console.Clear();
                     Console.WriteLine(error);
                 }
             }
