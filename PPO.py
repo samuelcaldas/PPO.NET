@@ -147,14 +147,16 @@ class PPO(object):
             {
                 self.state_placeholder: state,    # Recebe o estado
                 self.discounted_reward_placeholder: reward  # Recebe a recompensa
-            })
+            }
+        )
         [self.session.run(
             self.actor_old_policy_trainer,     # Treina o ator
             {
                 self.state_placeholder: state,    # Recebe o estado
                 self.action_placeholder: action,    # Recebe a ação
                 self.advantage_placeholder: advantage # Recebe o avanço
-            }) for _ in range(ACTOR_UPDATE_STEPS)]   # A_UPDATE_STEPS é quantas vezes que a rede vai ser atualizada
+            }
+        ) for _ in range(ACTOR_UPDATE_STEPS)]   # A_UPDATE_STEPS é quantas vezes que a rede vai ser atualizada
 
         # Atualiza a CRITICA através da função de treinamento
         [self.session.run(         # Executa o treinamento da critica
@@ -162,7 +164,8 @@ class PPO(object):
             {
                 self.state_placeholder: state,                      #   tfs é o placehoder que recebe estado s do ambiente
                 self.discounted_reward_placeholder: reward           #   tfdc_r é o placeholder que recebe a recompensa r do ambiente
-            }) for _ in range(CRITIC_UPDATE_STEPS)] # C_UPDATE_STEPS é quantas vezes que a rede vai ser atualizada
+            }
+        ) for _ in range(CRITIC_UPDATE_STEPS)] # C_UPDATE_STEPS é quantas vezes que a rede vai ser atualizada
                                                                                                         
                                                                                                         
                                                                                                         
@@ -204,7 +207,8 @@ class PPO(object):
 
             normal_distribuition = tf.distributions.Normal(# Normaliza a saída mu da rede, considerando sigma
                 loc=mu,                             # Loc é a média
-                scale=sigma)            
+                scale=sigma
+            )            
                                                                                 
         parameters = tf.get_collection(             # Coleta em params os pesos
             tf.GraphKeys.GLOBAL_VARIABLES,      # das camadas l1,mu/2 e sigma
@@ -216,7 +220,7 @@ class PPO(object):
         state = state[np.newaxis, :]    #   Recebe o estado s e
         action = self.session.run(self.sample_actor_old_policy,   #   Executa sample_op
             {self.state_placeholder: state}     #   com o placeholder tfs que recebe o estado s e armazena a ação em a
-        )[0]    #
+        )[0]
         return np.clip(action, -2, 2)    #   Retorna um valor de ação a clipado entre -2 e 2
 
     def get_value(self, state):             # Recebe o estado s e retorna o valor da taxa de aprendizagem da
@@ -225,4 +229,4 @@ class PPO(object):
         return self.session.run(   # Retorna a taxa de aprendizagem da CRITICA
             self.critic_value_layer,             # v é a saída de valores da CRITICA
             {self.state_placeholder: state}       # tfs é o placeholder que recebe o estado s
-        )[0, 0] #
+        )[0, 0]

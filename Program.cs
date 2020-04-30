@@ -66,13 +66,13 @@ namespace ppo.net
                             //  Atualiza PPO //
                             if ((STEP + 1) % NUMBER_OF_SAMPLES == 0 || STEP == TRAINING_STEPS - 1)
                             {
-                                double value_state_ = ppo.get_v(step_state);    // Passa o estado atual step_state e recebe o valor atual da taxa de aprendizagem da CRITICA
+                                float value_state_ = ppo.get_value(step_state);    // Passa o estado atual step_state e recebe o valor atual da taxa de aprendizagem da CRITICA
                                                                                 // V = learned state-value function
                                 discounted_reward.Clear();                      // Limpa o array de recompensas calculadas
                                 buffered_rewards.Reverse();                      // Coloca o array de buffer de recompensa ao contrario
-                                foreach (double b_r in buffered_rewards)
+                                foreach (float buffered_reward in buffered_rewards)
                                 {
-                                    value_state_ = b_r + GAMMA * value_state_;  // Calcula action recompensa multiplicando action recompensa recebida reward pela GAMMA 
+                                    value_state_ = buffered_reward + GAMMA * value_state_;  // Calcula action recompensa multiplicando action recompensa recebida reward pela GAMMA 
                                                                                 // e pelo valor da taxa de aprendizado do estado value_state_
                                     discounted_reward.Add(value_state_);        // Adiciona ao array de recompensas calculadas 
                                 }
@@ -87,7 +87,7 @@ namespace ppo.net
                                 buffered_actions.Clear();
                                 buffered_rewards.Clear();
                                 // Treine o cliente e o ator (status, ações, desconto de reward)
-                                ppo.update( // Atualiza as redes com:
+                                ppo.update_network( // Atualiza as redes com:
                                     _buffered_states,     //   Os estados acumulados
                                     _buffered_actions,     //   As ações acumuladas
                                     _buffered_rewards      //   As recompensas acumuladas
@@ -124,7 +124,7 @@ namespace ppo.net
                 catch (Exception error)
                 {
                     // Comunique erros com exceções no script python -  isso funciona muito bem com pythonnet.
-                    Console.WriteLine("Erro ", error.Message);
+                    Console.WriteLine(error);
                 }
             }
         }
