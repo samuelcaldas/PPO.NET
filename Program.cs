@@ -142,10 +142,10 @@ namespace ppo.net
                             buffered_rewards.Clear();
 
                             // Treine o cliente e o ator (status, ações, desconto de reward)
-                            ppo.update_network( // Atualiza as redes com:
-                                _buffered_states,     //   Os estados acumulados
-                                _buffered_actions,     //   As ações acumuladas
-                                _buffered_rewards      //   As recompensas acumuladas
+                            ppo.update_network(     // Atualiza as redes com:
+                                _buffered_states,   //   Os estados acumulados
+                                _buffered_actions,  //   As ações acumuladas
+                                _buffered_rewards   //   As recompensas acumuladas
                             );
                         }
                     }
