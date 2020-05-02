@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace ppo.net
 {
     // Implementação da classe ppo //
-    class PPO
+    class _PPO
     {
         /// <summary>
         /// Classe PPO agrega:
@@ -64,7 +64,7 @@ namespace ppo.net
             {"epsilon", 0.2}    // epsilon=0.2 Valor de epsilon sugerido pelos papéis
         };
 
-        PPO()   // Construtor da Classe
+        _PPO()   // Construtor da Classe
         {
             this.session = tf.Session();   //inicializar uma seção do TensorFlow
 

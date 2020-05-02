@@ -13,11 +13,11 @@ namespace ppo.net
         private static IntPtr gs;
 
         // Python imports //
-        private static dynamic sys;
+        private static dynamic  sys;
         private static dynamic  site;
         private static dynamic  gym;
         private static dynamic  numpy;
-        private static dynamic  PPO;
+        private static dynamic  _ppo;
         private static dynamic  plt;
         //
         private static dynamic env;
@@ -78,12 +78,12 @@ namespace ppo.net
             site.addsitedir(@"C:\Users\samue\source\repos\PPO.NET");
             gym = Py.Import("gym");
             numpy = Py.Import("numpy");    // Numpy para trabalhar com arrays
-            PPO = Py.Import("PPO");
+            _ppo = Py.Import("PPO");
             plt = Py.Import("matplotlib.pyplot");
 
             // Implementação do ambiente   //
             env = gym.make("Pendulum-v0").unwrapped;        // Instancia o ambiente pendulo
-            ppo = PPO.PPO();                                // Instancia action classe PPO
+            ppo = _ppo.PPO();                                // Instancia action classe PPO
 
             Console.Clear();
             //
