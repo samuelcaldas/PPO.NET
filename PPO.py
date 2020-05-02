@@ -40,7 +40,7 @@ class PPO(object):
         self.sess = tf.Session()    #inicializar uma seção do TensorFlow
 
         # Declaração das entradas das redes:
-        self.tfs = tf.placeholder(  # Estado do ambiente: a rede recebe o estado do ambiente através desse placeholder
+        self.state_placeholder = tf.placeholder(  # Estado do ambiente: a rede recebe o estado do ambiente através desse placeholder
             tf.float32,             #   Tipo do placeholder
             [None, STATE_DIM ],     #   Dimensões do placeholder
             'state_placeholder'     #   Nome do placeholder
@@ -62,7 +62,7 @@ class PPO(object):
         with tf.variable_scope('critic'):   
             # Criação da rede neural:
             l1 = tf.layers.dense(       # Camada 1 entrada da Critica: 
-                self.tfs,               #   self.tfs é o placeholder do estado, funciona como entrada da rede
+                self.state_placeholder,               #   self.tfs é o placeholder do estado, funciona como entrada da rede
                 100,                    #   100 é o numero de neurônios 
                 tf.nn.relu,             #   Relu é o tipo de ativação da saída da camada
                 name='layer1-critic'    #   name é o nome da camada
@@ -76,12 +76,12 @@ class PPO(object):
 
         # Método de treinamento para o CRITICA, ou seja, o método de aprendizagem:
         with tf.variable_scope('ctrain'):
-            self.tfdc_r = tf.placeholder(   # A recompensa de cada episódio é inserida na rede através desse placeholder
+            self.discounted_reward = tf.placeholder(   # A recompensa de cada episódio é inserida na rede através desse placeholder
                 tf.float32,                 #   Tipo do placeholder
                 [None, 1],                  #   Dimensões do placeholder
-                'discounted_r'              #   Nome do placeholder
+                'discounted_reward'              #   Nome do placeholder
             )     
-            self.advantage = self.tfdc_r - self.v   # Através da recompensa discounted_r/tfdc_r subtraída pelo
+            self.advantage = self.discounted_reward - self.v   # Através da recompensa discounted_r/tfdc_r subtraída pelo
                                                     # valor de aprendizagem V_layer/v obtemos a vantagem
             self.closs = tf.reduce_mean(    # tf.reduce_mean calcula a média. 
                 tf.square(                  # tf.square calcula o quadrado
@@ -148,14 +148,14 @@ class PPO(object):
         advantage = self.sess.run(
             self.advantage,     # Calcula a vantagem, ou seja, a recompensa do ATOR 
             {
-                self.tfs:       states,    # Recebe o estado
-                self.tfdc_r:    rewards  # Recebe a recompensa
+                self.state_placeholder:       states,    # Recebe o estado
+                self.discounted_reward:    rewards  # Recebe a recompensa
             }
         )
         [self.sess.run(
             self.atrain_op,     # Treina o ator
             {
-                self.tfs:   states,    # Recebe o estado
+                self.state_placeholder:   states,    # Recebe o estado
                 self.action_placeholder:   actions,    # Recebe a ação
                 self.advantage_placeholder: advantage # Recebe o avanço
             }
@@ -165,8 +165,8 @@ class PPO(object):
         [self.sess.run(         # Executa o treinamento da critica
             self.ctrain_op,     #   ctrain_op é o treinamento da critica
             {
-                self.tfs:       states,     #   tfs é o placehoder que recebe estado s do ambiente
-                self.tfdc_r:    rewards     #   tfdc_r é o placeholder que recebe a recompensa r do ambiente
+                self.state_placeholder:       states,     #   tfs é o placehoder que recebe estado s do ambiente
+                self.discounted_reward:    rewards     #   tfdc_r é o placeholder que recebe a recompensa r do ambiente
             }
         ) for _ in range(CRITIC_UPDATE_STEPS)]   # C_UPDATE_STEPS é quantas vezes que a rede vai ser atualizada
                                                                                                         
@@ -180,7 +180,7 @@ class PPO(object):
         #    trainable determina se a rede é treinável ou não
         with tf.variable_scope(name):   
             l1 = tf.layers.dense(       # Camada 1 entrada do ATOR: 
-                self.tfs,               #   self.tfs é o placeholder do estado, funciona como entrada pra rede
+                self.state_placeholder,               #   self.tfs é o placeholder do estado, funciona como entrada pra rede
                 100,                    #   100 é o numero de neurônios 
                 tf.nn.relu,             #   Relu é o tipo de ativação da saída da rede
                 trainable=trainable     #   trainable determina se a rede é treinável ou não
@@ -220,7 +220,7 @@ class PPO(object):
         state = state[np.newaxis, :]    #   Recebe o estado s e 
         action = self.sess.run(
             self.sample_op,             #   Executa sample_op 
-            {self.tfs: state}           #   com o placeholder tfs que recebe o estado s e armazena a ação em a
+            {self.state_placeholder: state}           #   com o placeholder tfs que recebe o estado s e armazena a ação em a
         )[0]
         return np.clip(action, -2, 2)   #   Retorna um valor de ação a clipado entre -2 e 2
 
@@ -228,5 +228,5 @@ class PPO(object):
         if state.ndim < 2: state = state[np.newaxis, :] 
         return self.sess.run(   # Retorna a taxa de aprendizagem da CRITICA
             self.v,             # v é a saída de valores da CRITICA
-            {self.tfs: state}       # tfs é o placeholder que recebe o estado s
+            {self.state_placeholder: state}       # tfs é o placeholder que recebe o estado s
         )[0, 0] 
