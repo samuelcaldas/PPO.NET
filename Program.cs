@@ -2,7 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Gym;
+using System.Text;
+using System.Threading.Tasks;
+using static Tensorflow.Binding;
+using NumSharp;
+using SixLabors.ImageSharp;
+using Gym.Environments;
+using Gym.Environments.Envs.Classic;
+using Gym.Rendering.WinForm;
+using Tensorflow;
+using Gym.Spaces;
 
 namespace ppo.net
 {
@@ -75,8 +84,9 @@ namespace ppo.net
 
             // Implementação do ambiente   //
             //env = _gym.make("Pendulum-v0").unwrapped;// Instancia o ambiente pendulo
-            var env = gym.Make("Pendulum-v0");
-            
+            //var env = gym.Make("Pendulum-v0");
+            CartPoleEnv env = new CartPoleEnv(WinFormEnvViewer.Factory);
+
 
             Console.Clear();
 
