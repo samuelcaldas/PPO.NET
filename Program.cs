@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NumSharp;
+using Gym;
 
 namespace ppo.net
 {
@@ -12,17 +12,6 @@ namespace ppo.net
         // Python Engine Lock handler
         private static IntPtr gs;
 
-        // Python imports //
-        private static dynamic  sys;
-        private static dynamic  site;
-        private static dynamic  gym;
-        private static dynamic  numpy;
-        private static dynamic  _ppo;
-        private static dynamic  plt;
-        //
-        private static dynamic env;
-        private static dynamic ppo;
-
         //  Configurações   //
         private static readonly int     TRAINING_EPOCHS = 700;  // Quantidade total de episódios
         private static readonly int     TRAINING_STEPS = 200;   // Quantas sequencias vão acontecer dentro de cada episódio
@@ -30,9 +19,9 @@ namespace ppo.net
         private static readonly int     NUMBER_OF_SAMPLES = 64; // Tamanho do pacote à entrar para treinamento em cada etapa (?)
         
         // Cria arrais para armazenar os dados dos episódios:
-        private static List<double>     all_epochs_rewards  = new List<double>();    // all_epochs_rewards: recompensa de todos os episódios
         private static List<dynamic>    buffered_states     = new List<dynamic>();     // buffered_states: buffer do estado
         private static List<dynamic>    buffered_actions    = new List<dynamic>();    // buffered_actions: buffer da ação
+        private static List<double>     all_epochs_rewards  = new List<double>();    // all_epochs_rewards: recompensa de todos os episódios
         private static List<double>     buffered_rewards    = new List<double>();      // buffered_rewards: buffer da recompensa         
         private static List<double>     discounted_reward   = new List<double>();     // Cria um array pra armazenar as recompensas calculadas
         //
@@ -73,39 +62,41 @@ namespace ppo.net
             gs = PythonEngine.AcquireLock(); // Adquire o bloqueio do interpretador
 
             //  Importações //
-            site = Py.Import("site");
-            sys = Py.Import("sys");
+            dynamic site    = Py.Import("site");
+            dynamic sys     = Py.Import("sys");
             site.addsitedir(@"C:\Users\samue\source\repos\PPO.NET");
-            gym = Py.Import("gym");
-            numpy = Py.Import("numpy");    // Numpy para trabalhar com arrays
-            _ppo = Py.Import("PPO");
-            plt = Py.Import("matplotlib.pyplot");
+            dynamic _gym     = Py.Import("gym");
+            dynamic np   = Py.Import("numpy");   // Numpy para trabalhar com arrays
+            dynamic _ppo    = Py.Import("PPO");
+            dynamic plt     = Py.Import("matplotlib.pyplot");
+            var ppo = _ppo.PPO();                       // Instancia action classe PPO
+
+            PythonEngine.ReleaseLock(gs);
 
             // Implementação do ambiente   //
-            env = gym.make("Pendulum-v0").unwrapped;        // Instancia o ambiente pendulo
-            ppo = _ppo.PPO();                                // Instancia action classe PPO
+            //env = _gym.make("Pendulum-v0").unwrapped;// Instancia o ambiente pendulo
+            var env = gym.Make("Pendulum-v0");
+            
 
             Console.Clear();
-            //
-
-
 
             try
             {
-
-
                 //  Loop de episódios //
                 for (int EPOCH = 0; EPOCH < TRAINING_EPOCHS; EPOCH++)   // TRAINING_EPOCHS: quantidade de episódios 
                 {
-                    state = env.reset();                        // Redefine o ambiente e armazena o estado atual em state
+                    state = env.Reset();                                // Redefine o ambiente e armazena o estado atual em state
 
                     epoch_reward = 0;   // Recompensa do episódio
                                         //  Loop de episódio //
                     for (int STEP = 0; STEP < TRAINING_STEPS; STEP++)   // Duração de cada episodio
                     {
-                        env.render();                           // Renderiza o ambiente
-                        action = ppo.choose_action(state);  // Envia um estado state e recebe uma ação action 
-                        step = env.step(action);        // Envia uma ação action ao ambiente e recebe o estado step_state, e action recompensa reward
+                        env.Render();                                   // Renderiza o ambiente
+                        gs = PythonEngine.AcquireLock();
+                        action = ppo.choose_action(state);              // Envia um estado state e recebe uma ação action 
+                        PythonEngine.ReleaseLock(gs);
+
+                        step = env.Step(action);                        // Envia uma ação action ao ambiente e recebe o estado step_state, e action recompensa reward
 
                         buffered_states.Add(state);             // Adiciona ao buffer de estado o estado atual state
 
@@ -118,7 +109,9 @@ namespace ppo.net
                         //  Atualiza PPO //
                         if ((STEP + 1) % NUMBER_OF_SAMPLES == 0 || STEP == TRAINING_STEPS - 1) // A cada 64 passos a rede é atualizada
                         {
+                            gs = PythonEngine.AcquireLock();
                             value_state_ = ppo.get_value(step_state);    // Passa o estado atual step_state e recebe o valor atual da taxa de aprendizagem da CRITICA
+                            PythonEngine.ReleaseLock(gs);
                                                                          // V = learned state-value function
                             discounted_reward.Clear();                   // Limpa o array de recompensas calculadas
                             buffered_rewards.Reverse();                  // Coloca o array de buffer de recompensa ao contrario
@@ -132,9 +125,9 @@ namespace ppo.net
                             discounted_reward.Reverse();                    // Coloca o array de recompensas calculadas ao contrario
                                                                             // vstack transforma os arrays que estão em linha, em colunas
                                                                             // Esses arrays de colunas são armazenados em _buffered_states _buffered_actions e _buffered_rewards
-                            var _buffered_states = numpy.vstack(buffered_states);
-                            var _buffered_actions = numpy.vstack(buffered_actions);
-                            var _buffered_rewards = numpy.expand_dims(numpy.array(discounted_reward), axis: 1);
+                            var _buffered_states = np.vstack(buffered_states);
+                            var _buffered_actions = np.vstack(buffered_actions);
+                            var _buffered_rewards = np.expand_dims(np.array(discounted_reward), axis: 1);
 
                             // Esvazia os buffers de estado, ação e recompensa
                             buffered_states.Clear();
@@ -142,11 +135,13 @@ namespace ppo.net
                             buffered_rewards.Clear();
 
                             // Treine o cliente e o ator (status, ações, desconto de reward)
+                            gs = PythonEngine.AcquireLock();
                             ppo.update_network(     // Atualiza as redes com:
                                 _buffered_states,   //   Os estados acumulados
                                 _buffered_actions,  //   As ações acumuladas
                                 _buffered_rewards   //   As recompensas acumuladas
                             );
+                            PythonEngine.ReleaseLock(gs);
                         }
                     }
                     // Adiciona action recompensa do episodio atual ao array de recompensas
@@ -164,8 +159,9 @@ namespace ppo.net
                         ": " + epoch_reward                 // Recompensa do episodio
                     );
                 }
+                gs = PythonEngine.AcquireLock();
                 plt.plot(   // Plota o gráfico de todas as recompensas
-                    numpy.arange(
+                    np.arange(
                         all_epochs_rewards.Count
                     ),
                     all_epochs_rewards
@@ -173,6 +169,7 @@ namespace ppo.net
                 plt.xlabel("Episódio");
                 plt.ylabel("Média móvel da recompensa de cada época");
                 plt.show();
+                PythonEngine.ReleaseLock(gs);
             }
             //catch (PythonException error)
             catch (Exception error)
@@ -182,21 +179,12 @@ namespace ppo.net
                 Console.WriteLine(error);
             }
 
-
-
-
-
             PythonEngine.ReleaseLock(gs);
             // Trava liberada
 
             PythonEngine.Shutdown(); // Liberando recursos
 
             Console.ReadKey();
-        }
-
-        private static void Test()
-        {
-            
         }
     }
 }

@@ -151,6 +151,7 @@ namespace ppo.net
                 using (tf.variable_scope("surrogate_pp"))
                 {
                     ratio = actor_policy.prob(this.action_placeholder) / actor_old_policy.prob(this.action_placeholder); // !
+
                     // O Ratio é action razão da probabilidade da ação actor_policy na politica nova  pela probabilidade da ação action_placeholder na politica antiga.
                     surrogate = ratio * this.advantage_placeholder; // Surrogate é action Razão multiplicada pela vantagem
 
@@ -226,7 +227,7 @@ namespace ppo.net
 
                 //   Calcula action ação que vai ser tomada
                 Tensor mu = 2 * tf.layers.dense(    // Camada mu do ATOR
-                    inputs: actor_1_layer,         //   actor_1_layer é action entrada da camada
+                    inputs: actor_1_layer,          //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
                     tf.nn.tanh(),                   //   tanh é o tipo de ativação da saída da camada, retorna um valor entre 1 e -1
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
@@ -236,22 +237,22 @@ namespace ppo.net
 
                 //   Calcula o desvio padrão, o range onde estará action possibilidade de ação
                 Tensor sigma = tf.layers.dense(     // Camada sigma do ATOR
-                    inputs: actor_1_layer,         //   actor_1_layer é action entrada da camada
+                    inputs: actor_1_layer,          //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
-                    activation: tf.nn.relu(),   //   softplus é o tipo de ativação da saída da camada // !
+                    activation: tf.nn.softplus(),   //   softplus é o tipo de ativação da saída da camada // !
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
                     name: "sigma_" + name           //   name é o nome da camada
                 );
 
-                //Tensor normal_distribuition = tf.distributions.Tensor(  // Transforma em tensor action saída mu da rede, considerando sigma // !
-                Normal normal_distribuition = tf.distributions.Normal(  // Transforma em tensor action saída mu da rede, considerando sigma // !
+                //Tensor policy = tf.distributions.Tensor(  // Transforma em tensor action saída mu da rede, considerando sigma // !
+                Normal policy = tf.distributions.Normal(  // Transforma em tensor action saída mu da rede, considerando sigma // !
                     loc: mu,                                            // Loc é action média
                     scale: sigma
                 );
-                
+
                 // Coleta em parameters os pesos das camadas actor_1_layer, mu/2 e sigma do escopo atual
                 List<Tensor> parameters = tf.get_collection<Tensor>(key: tf.GraphKeys.GLOBAL_VARIABLES, scope: name);
-                return (normal_distribuition, parameters);    // Retorna action ação e os pesos atuais das redes para serem armazenados na
+                return (policy, parameters);    // Retorna action ação e os pesos atuais das redes para serem armazenados na
             }
         }
 

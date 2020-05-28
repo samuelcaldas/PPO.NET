@@ -17,8 +17,8 @@ ACTOR_LEARNINGRATE  = 0.0001    # Taxa de aprendizado do ATOR
 CRITIC_LEARNINGRATE = 0.0002    # Taxa de aprendizado da CRITICA
 ACTOR_UPDATE_STEPS  = 20        # Quantidade de vezes que o treinamento do ATOR vai tomar a cadeia de dados de batch
 CRITIC_UPDATE_STEPS = 20        # Quantidade de vezes que o treinamento da CRITICA vai tomar a cadeia de dados de batch
-STATE_DIM = 3                   # S_DIM é a dimensão do estado, ou seja, quantas entradas ele terá
-ACTION_DIM = 1                  # A_DIM é a dimensão das ações, ou seja, quantas ações podem ser executadas
+STATE_DIM   = 3                 # S_DIM é a dimensão do estado, ou seja, quantas entradas ele terá
+ACTION_DIM  = 1                 # A_DIM é a dimensão das ações, ou seja, quantas ações podem ser executadas
 
 METHOD = dict(
     name='clip',    # Método de clip (Clipped surrogate objective) sugerido pelos papéis como mais eficiente
