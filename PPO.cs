@@ -1,8 +1,27 @@
-﻿using Tensorflow;
-using static Tensorflow.Binding;
-using NumSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+//
+using SixLabors.ImageSharp;
+using Gym.Environments;
+using Gym.Environments.Envs.Classic;
+using Gym.Rendering.WinForm;
+//
+using NumSharp;
+using Tensorflow;
+using Tensorflow.Keras;
+using Tensorflow.Keras.ArgsDefinition;
+using Tensorflow.Keras.Engine;
+using Tensorflow.Keras.Layers;
+using Tensorflow.Keras.Losses;
+using Tensorflow.Keras.Optimizers;
+using Tensorflow.Keras.Utils;
+using static Tensorflow.Binding;
+using static Tensorflow.KerasApi;
+using CustomRandom;
 
 namespace ppo.net
 {
@@ -91,14 +110,14 @@ namespace ppo.net
             using (tf.variable_scope("critic"))
             {
                 // Criação da rede neural:
-                critic_1_layer = tf.layers.dense(   // Camada 1 entrada da Critica:
+                critic_1_layer = keras.layers.dense(   // Camada 1 entrada da Critica:
                     inputs: this.state_placeholder, //   this.state_placeholder é o placeholder do estado, funciona como entrada da rede
                     100,                            //   100 é o numero de neurônios
-                    activation: tf.nn.relu(),       //   Relu é o tipo de ativação da saída da camada
+                    activation: keras.activations.Relu,       //   Relu é o tipo de ativação da saída da camada
                     name: "critic_1_layer"          //   name é o nome da camada
                 );
 
-                this.critic_value_layer = tf.layers.dense(  // Camada de saída de valores da CRITICA:
+                this.critic_value_layer = keras.layers.dense(  // Camada de saída de valores da CRITICA:
                     inputs: critic_1_layer,                 //   critic_1_layer é action variável referente action primeira camada da rede,
                     1,                                      //   1 é action quantidade de saídas da rede
                     name: "critic_value_layer"              //   name é o nome da camada
@@ -150,7 +169,7 @@ namespace ppo.net
             {
                 using (tf.variable_scope("surrogate_pp"))
                 {
-                    ratio = actor_policy.prob(this.action_placeholder) / actor_old_policy.prob(this.action_placeholder); // !
+                    ratio = actor_policy.log_prob(this.action_placeholder) / actor_old_policy.log_prob(this.action_placeholder); // !
 
                     // O Ratio é action razão da probabilidade da ação actor_policy na politica nova  pela probabilidade da ação action_placeholder na politica antiga.
                     surrogate = ratio * this.advantage_placeholder; // Surrogate é action Razão multiplicada pela vantagem
@@ -218,28 +237,28 @@ namespace ppo.net
             //    trainable determina se action rede é treinável ou não
             using (tf.variable_scope(name))
             {
-                Tensor actor_1_layer = tf.layers.dense(   // Camada 1 entrada do ATOR:
+                Tensor actor_1_layer = keras.layers.dense(   // Camada 1 entrada do ATOR:
                     inputs: this.state_placeholder, //   this.state_placeholder é o placeholder do estado, funciona como entrada pra rede
                     100,                            //   100 é o numero de neurônios
-                    tf.nn.relu(),                   //   Relu é o tipo de ativação da saída da rede
+                    keras.activations.Relu,                   //   Relu é o tipo de ativação da saída da rede
                     trainable: trainable            //   trainable determina se action rede é treinável ou não
                 );
 
                 //   Calcula action ação que vai ser tomada
-                Tensor mu = 2 * tf.layers.dense(    // Camada mu do ATOR
+                Tensor mu = 2 * keras.layers.dense(    // Camada mu do ATOR
                     inputs: actor_1_layer,          //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
-                    tf.nn.tanh(),                   //   tanh é o tipo de ativação da saída da camada, retorna um valor entre 1 e -1
+                     keras.activations.tanh,                   //   tanh é o tipo de ativação da saída da camada, retorna um valor entre 1 e -1
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
                     name: "mu_" + name              //   name é o nome da camada
                 );                                  //   O resultado é multiplicado por 2 para se adequar ao ambiente, que trabalha com um range 2 e -2.
 
 
                 //   Calcula o desvio padrão, o range onde estará action possibilidade de ação
-                Tensor sigma = tf.layers.dense(     // Camada sigma do ATOR
+                Tensor sigma = keras.layers.dense(     // Camada sigma do ATOR
                     inputs: actor_1_layer,          //   actor_1_layer é action entrada da camada
                     ACTIONS,                        //   ACTIONS
-                    activation: tf.nn.softplus(),   //   softplus é o tipo de ativação da saída da camada // !
+                    activation: keras.activations.softplus,   //   softplus é o tipo de ativação da saída da camada // !
                     trainable: trainable,           //   trainable determina se action rede é treinável ou não
                     name: "sigma_" + name           //   name é o nome da camada
                 );
